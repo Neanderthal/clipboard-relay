@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "clipboard-relay"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Encrypted clipboard relay via git (works with any git host)"
 requires-python = ">=3.8"
 dependencies = [
@@ -21,6 +21,9 @@ dev = [
 
 [project.scripts]
 cb = "cb.cli:main"
+
+[tool.hatch.version]
+path = "src/cb/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cb"]
