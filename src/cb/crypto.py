@@ -26,15 +26,11 @@ def decrypt(armored_data: str, passphrase: str | None = None) -> str:
     """Decrypt ASCII-armored GPG ciphertext."""
     gpg = get_gpg()
     result = gpg.decrypt(armored_data, passphrase=passphrase)
-    if not result.ok and "no secret key" in result.status:
+    if not result.ok and passphrase is None:
+        # First attempt failed — prompt for passphrase and retry
+        passphrase = getpass.getpass("GPG passphrase: ")
+        result = gpg.decrypt(armored_data, passphrase=passphrase)
+    if not result.ok:
         print(f"GPG decryption failed: {result.status}", file=sys.stderr)
         sys.exit(1)
-    if not result.ok:
-        # Likely needs passphrase — prompt and retry
-        if passphrase is None:
-            passphrase = getpass.getpass("GPG passphrase: ")
-            result = gpg.decrypt(armored_data, passphrase=passphrase)
-        if not result.ok:
-            print(f"GPG decryption failed: {result.status}", file=sys.stderr)
-            sys.exit(1)
     return str(result)

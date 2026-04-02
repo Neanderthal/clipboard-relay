@@ -47,8 +47,9 @@ def test_decrypt_success(mock_get_gpg):
     assert result == "decrypted text"
 
 
+@patch("cb.crypto.getpass.getpass", return_value="wrongpass")
 @patch("cb.crypto.get_gpg")
-def test_decrypt_failure_no_secret_key(mock_get_gpg):
+def test_decrypt_failure_after_passphrase(mock_get_gpg, mock_getpass):
     gpg = MagicMock()
     gpg.decrypt.return_value = FakeGPGResult(ok=False, status="no secret key")
     mock_get_gpg.return_value = gpg
