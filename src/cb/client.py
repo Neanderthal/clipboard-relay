@@ -18,8 +18,20 @@ class Clip:
     path: Path
 
 
+GIT_TIMEOUT = 30
+
+
 def _run(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
-    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    env = dict(__import__("os").environ, GIT_TERMINAL_PROMPT="0")
+    try:
+        result = subprocess.run(
+            cmd, cwd=cwd, capture_output=True, text=True,
+            timeout=GIT_TIMEOUT, env=env,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"Command timed out after {GIT_TIMEOUT}s: {' '.join(cmd)}", file=sys.stderr)
+        print("Check your git remote URL and network connection.", file=sys.stderr)
+        sys.exit(1)
     if result.returncode != 0:
         print(f"Command failed: {' '.join(cmd)}", file=sys.stderr)
         print(result.stderr.strip(), file=sys.stderr)
@@ -33,7 +45,7 @@ class GitClient:
         self.repo_dir = config.repo_dir
         self.clips_path = self.repo_dir / config.clips_dir
 
-    def _ensure_repo(self) -> None:
+    def ensure_repo(self) -> None:
         """Clone the repo if it doesn't exist, otherwise pull latest."""
         if (self.repo_dir / ".git").exists():
             _run(["git", "pull", "--rebase", "--quiet"], cwd=self.repo_dir)
@@ -42,9 +54,16 @@ class GitClient:
             _run(["git", "clone", self.config.repo_url, str(self.repo_dir)])
         self.clips_path.mkdir(exist_ok=True)
 
+    def _sync(self) -> None:
+        """Pull latest. Fails fast if repo not cloned yet."""
+        if not (self.repo_dir / ".git").exists():
+            print(f"Repo not cloned yet. Run: cb config --repo {self.config.repo_url}", file=sys.stderr)
+            sys.exit(1)
+        _run(["git", "pull", "--rebase", "--quiet"], cwd=self.repo_dir)
+
     def push_clip(self, encrypted_content: str) -> str:
         """Write encrypted clip to repo, commit and push. Returns filename."""
-        self._ensure_repo()
+        self._sync()
 
         now = datetime.now(timezone.utc)
         filename = now.strftime("%Y%m%d_%H%M%S") + ".gpg"
@@ -60,7 +79,7 @@ class GitClient:
 
     def list_clips(self) -> list[Clip]:
         """List all clips, newest first."""
-        self._ensure_repo()
+        self._sync()
 
         if not self.clips_path.exists():
             return []
@@ -80,7 +99,7 @@ class GitClient:
 
     def get_clip(self, filename: str) -> str:
         """Get content of a specific clip."""
-        self._ensure_repo()
+        self._sync()
         file_path = self.clips_path / filename
         if not file_path.exists():
             print(f"Clip not found: {filename}", file=sys.stderr)
@@ -103,7 +122,7 @@ class GitClient:
 
     def delete_expired(self, max_age_hours: int = 24) -> list[str]:
         """Delete clips older than max_age_hours, commit and push."""
-        self._ensure_repo()
+        self._sync()
         clips = self.list_clips()
         now = datetime.now(timezone.utc)
         deleted = []

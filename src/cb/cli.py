@@ -131,6 +131,14 @@ def config(repo: str | None, gpg_key: tuple[str, ...], repo_dir: str | None) -> 
         repo_dir=repo_dir,
     )
 
+    # Clone the repo right away so cb doesn't hang on first use
+    if repo:
+        cfg = Config.load()
+        click.echo(f"Cloning {cfg.repo_url} ...")
+        client = GitClient(cfg)
+        client.ensure_repo()
+        click.echo("Ready.")
+
 
 def _format_age(ts) -> str:
     from datetime import datetime, timezone
