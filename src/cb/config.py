@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import sys
-import tomllib
 from dataclasses import dataclass
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 from pathlib import Path
 
 CONFIG_DIR = Path.home() / ".config" / "cb"
