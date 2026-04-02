@@ -95,7 +95,7 @@ def test_push_clip(client_with_repo):
     assert filename.endswith(".gpg")
     assert (clips_dir / filename).read_text() == "encrypted-content"
     # Should have called git add, commit, push
-    assert mock_run.call_count == 4  # pull + add + commit + push
+    assert mock_run.call_count == 3  # add + commit + push (no pull on empty repo)
 
 
 def test_delete_expired(client_with_repo):

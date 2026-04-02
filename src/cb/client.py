@@ -50,10 +50,18 @@ class GitClient:
         self.repo_dir = config.repo_dir
         self.clips_path = self.repo_dir / config.clips_dir
 
+    def _has_commits(self) -> bool:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.repo_dir, capture_output=True, text=True,
+        )
+        return result.returncode == 0
+
     def ensure_repo(self) -> None:
         """Clone the repo if it doesn't exist, otherwise pull latest. Allows interactive prompts."""
         if (self.repo_dir / ".git").exists():
-            _run(["git", "pull", "--rebase", "--quiet"], cwd=self.repo_dir, interactive=True)
+            if self._has_commits():
+                _run(["git", "pull", "--rebase", "--quiet"], cwd=self.repo_dir, interactive=True)
         else:
             self.repo_dir.mkdir(parents=True, exist_ok=True)
             _run(["git", "clone", self.config.repo_url, str(self.repo_dir)], interactive=True)
@@ -64,7 +72,8 @@ class GitClient:
         if not (self.repo_dir / ".git").exists():
             print(f"Repo not cloned yet. Run: cb config --repo {self.config.repo_url}", file=sys.stderr)
             sys.exit(1)
-        _run(["git", "pull", "--rebase", "--quiet"], cwd=self.repo_dir)
+        if self._has_commits():
+            _run(["git", "pull", "--rebase", "--quiet"], cwd=self.repo_dir)
 
     def push_clip(self, encrypted_content: str) -> str:
         """Write encrypted clip to repo, commit and push. Returns filename."""
