@@ -50,9 +50,9 @@ pip install -e ".[dev]"
 
 ## Setup
 
-### 1. Create a relay repository
+### 1. Create a data repository
 
-Create a **private** repository on your git host of choice. This repo stores your encrypted clips.
+Create a **separate private** repository on your git host of choice. This repo stores your encrypted clips — keep it separate from the tool's source code.
 
 ### 2. Set up GPG
 
@@ -80,7 +80,7 @@ gpg --import key_a.pub
 Run this on **both machines** with **all** GPG key IDs:
 
 ```bash
-cb config --repo git@github.com:you/clipboard-relay-data.git \
+cb config --repo git@yourhost.com:you/clipboard-data.git \
           --gpg-key AAAA1111 --gpg-key BBBB2222
 ```
 
@@ -103,14 +103,14 @@ git config --global credential.helper store
 ## Usage
 
 ```bash
-# Copy text
+# Copy text (argument)
 cb "hello from machine A"
 
-# Copy from stdin
+# Copy from stdin (piped input = copy)
 echo "piped content" | cb
 cat file.txt | cb
 
-# Paste (latest clip)
+# Paste latest clip (no args + interactive terminal = paste)
 cb
 
 # Paste into a file
@@ -134,12 +134,23 @@ cb config --gpg-key KEY_A --gpg-key KEY_B
 cb config --repo-dir /custom/path/to/repo
 ```
 
+**How `cb` decides copy vs paste:**
+
+| Invocation | Action |
+|---|---|
+| `cb "text"` | Copy — argument given |
+| `echo "text" \| cb` | Copy — stdin is piped |
+| `cb` | Paste — no args, interactive terminal |
+| `cb --id FILE` | Paste — specific clip |
+
+If your GPG key has a passphrase, `cb` will prompt for it on paste.
+
 ## Configuration
 
 Config lives at `~/.config/cb/config.toml`:
 
 ```toml
-repo_url = "git@github.com:you/clipboard-relay-data.git"
+repo_url = "git@yourhost.com:you/clipboard-data.git"
 gpg_keys = ["AAAA1111", "BBBB2222"]
 repo_dir = "/home/you/.config/cb/repo"   # optional, this is the default
 ```
@@ -248,7 +259,7 @@ ruff check src/ tests/
 
 ## Requirements
 
-- Python 3.11+
+- Python 3.8+
 - GPG (`gnupg`) installed on both machines
 - Git with push access to the relay repo
 
