@@ -43,6 +43,9 @@ def main(ctx: click.Context, clip_id: str | None) -> None:
     copy_text = (ctx.obj or {}).get("copy_text")
     if copy_text is not None:
         _do_copy(copy_text)
+    elif not sys.stdin.isatty():
+        # Stdin is piped — read and copy
+        _do_copy(sys.stdin.read())
     else:
         _do_paste(clip_id)
 

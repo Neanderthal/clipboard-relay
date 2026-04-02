@@ -32,7 +32,9 @@ def test_copy_with_arg(runner):
 def test_paste_no_args(runner):
     with patch("cb.cli.Config") as MockConfig, \
          patch("cb.cli.decrypt", return_value="secret text"), \
-         patch("cb.cli.GitClient") as MockClient:
+         patch("cb.cli.GitClient") as MockClient, \
+         patch("cb.cli.sys") as mock_sys:
+        mock_sys.stdin.isatty.return_value = True
         MockConfig.load.return_value = MagicMock()
         MockClient.return_value.get_latest_clip.return_value = "encrypted"
 
@@ -45,7 +47,9 @@ def test_paste_no_args(runner):
 def test_paste_with_id(runner):
     with patch("cb.cli.Config") as MockConfig, \
          patch("cb.cli.decrypt", return_value="specific text"), \
-         patch("cb.cli.GitClient") as MockClient:
+         patch("cb.cli.GitClient") as MockClient, \
+         patch("cb.cli.sys") as mock_sys:
+        mock_sys.stdin.isatty.return_value = True
         MockConfig.load.return_value = MagicMock()
         MockClient.return_value.get_clip.return_value = "encrypted"
 
@@ -57,7 +61,9 @@ def test_paste_with_id(runner):
 
 def test_paste_no_clips(runner):
     with patch("cb.cli.Config") as MockConfig, \
-         patch("cb.cli.GitClient") as MockClient:
+         patch("cb.cli.GitClient") as MockClient, \
+         patch("cb.cli.sys") as mock_sys:
+        mock_sys.stdin.isatty.return_value = True
         MockConfig.load.return_value = MagicMock()
         MockClient.return_value.get_latest_clip.return_value = None
 
