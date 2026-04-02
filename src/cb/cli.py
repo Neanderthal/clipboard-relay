@@ -24,6 +24,7 @@ class SmartGroup(click.Group):
 
 
 @click.group(cls=SmartGroup, invoke_without_command=True)
+@click.version_option(package_name="clipboard-relay")
 @click.option("--id", "clip_id", default=None, help="Paste a specific clip by filename.")
 @click.pass_context
 def main(ctx: click.Context, clip_id: str | None) -> None:
