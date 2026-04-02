@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "clipboard-relay"
+version = "0.1.0"
+description = "Encrypted clipboard relay via git (works with any git host)"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "python-gnupg>=0.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+cb = "cb.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cb"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

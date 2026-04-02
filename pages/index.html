@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clipboard Relay</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 2rem;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        h1 { color: #7b68ee; margin-bottom: 0.5rem; font-size: 1.5rem; }
+        .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.85rem; }
+        .clip {
+            background: #16213e;
+            padding: 1rem 1.2rem;
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .clip-name { font-family: monospace; color: #7b68ee; }
+        .clip-age { color: #888; font-size: 0.85rem; }
+        .empty { color: #666; text-align: center; padding: 3rem; }
+        .encrypted-badge {
+            background: #2d2d44;
+            color: #888;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+        }
+        .info {
+            background: #16213e;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+            color: #aaa;
+            font-size: 0.85rem;
+        }
+        .info code { color: #7b68ee; }
+    </style>
+</head>
+<body>
+    <h1>Clipboard Relay</h1>
+    <p class="subtitle">Encrypted clips — metadata only, content requires GPG key</p>
+
+    <div class="info">
+        Clips are GPG-encrypted. Use <code>cb paste</code> on your machine to decrypt.
+    </div>
+
+    <div id="clips"></div>
+
+    <script>
+        // This page is served by git hosting Pages (GitLab/GitFlic).
+        // It reads the clips/ directory listing from the repo tree API.
+        // Since each host has a different API, we try to detect and adapt.
+
+        // For static deployment: the CI pipeline generates a clips.json manifest
+        // that this page reads. No API calls needed.
+        fetch('clips.json')
+            .then(r => r.json())
+            .then(clips => {
+                const el = document.getElementById('clips');
+                if (!clips.length) {
+                    el.innerHTML = '<div class="empty">No clips found.</div>';
+                    return;
+                }
+                clips.sort((a, b) => b.name.localeCompare(a.name));
+                el.innerHTML = clips.map(c => {
+                    const age = formatAge(c.name);
+                    return `<div class="clip">
+                        <span class="clip-name">${c.name}</span>
+                        <span>
+                            <span class="encrypted-badge">GPG encrypted</span>
+                            <span class="clip-age">${age}</span>
+                        </span>
+                    </div>`;
+                }).join('');
+            })
+            .catch(() => {
+                document.getElementById('clips').innerHTML =
+                    '<div class="empty">Could not load clips manifest.</div>';
+            });
+
+        function formatAge(filename) {
+            try {
+                const base = filename.replace('.gpg', '');
+                const [date, time] = base.split('_');
+                const y = date.slice(0,4), m = date.slice(4,6), d = date.slice(6,8);
+                const h = time.slice(0,2), mi = time.slice(2,4), s = time.slice(4,6);
+                const ts = new Date(`${y}-${m}-${d}T${h}:${mi}:${s}Z`);
+                const diff = (Date.now() - ts.getTime()) / 1000;
+                if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+                if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+                return `${Math.floor(diff / 86400)}d ago`;
+            } catch {
+                return '';
+            }
+        }
+    </script>
+</body>
+</html>
