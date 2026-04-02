@@ -56,33 +56,35 @@ Create a **private** repository on your git host of choice. This repo stores you
 
 ### 2. Set up GPG
 
-Both machines need the **same GPG key**. If you already have one, skip to step 3.
+Each machine can have its **own GPG key** — no need to share private keys. Clips are encrypted to all configured recipients, so any machine can decrypt with its own key.
 
 ```bash
-# Generate a key (on machine A)
+# Generate a key on each machine (if you don't have one)
 gpg --full-generate-key
-
-# Export it
-gpg --export-secret-keys YOUR_KEY_ID > key.gpg
-
-# Transfer to machine B (use a secure method)
-scp key.gpg machineB:~/
-
-# Import on machine B
-gpg --import key.gpg
-rm key.gpg  # clean up
 
 # Find your key ID
 gpg --list-keys --keyid-format short
+# e.g. Machine A: AAAA1111, Machine B: BBBB2222
+
+# Exchange PUBLIC keys between machines
+# On machine A:
+gpg --export --armor AAAA1111 > key_a.pub
+# Transfer key_a.pub to machine B, then import:
+gpg --import key_a.pub
+
+# Do the same in reverse for machine B's public key
 ```
 
 ### 3. Configure clipboard-relay
 
-Run this on **both machines**:
+Run this on **both machines** with **all** GPG key IDs:
 
 ```bash
-cb config --repo git@github.com:you/clipboard-relay-data.git --gpg-key YOUR_KEY_ID
+cb config --repo git@github.com:you/clipboard-relay-data.git \
+          --gpg-key AAAA1111 --gpg-key BBBB2222
 ```
+
+Each clip is encrypted to both keys. Either machine decrypts with its own private key.
 
 This saves config to `~/.config/cb/config.toml`. The relay repo will be cloned to `~/.config/cb/repo/` on first use.
 
@@ -128,7 +130,7 @@ cb config
 
 # Update config
 cb config --repo git@gitflic.ru:user/clips.git
-cb config --gpg-key NEW_KEY_ID
+cb config --gpg-key KEY_A --gpg-key KEY_B
 cb config --repo-dir /custom/path/to/repo
 ```
 
@@ -138,14 +140,14 @@ Config lives at `~/.config/cb/config.toml`:
 
 ```toml
 repo_url = "git@github.com:you/clipboard-relay-data.git"
-gpg_key_id = "ABCD1234"
+gpg_keys = ["AAAA1111", "BBBB2222"]
 repo_dir = "/home/you/.config/cb/repo"   # optional, this is the default
 ```
 
 | Field | Description | Required |
 |---|---|---|
 | `repo_url` | Git remote URL for the relay repo | Yes |
-| `gpg_key_id` | GPG key ID used for encryption | Yes |
+| `gpg_keys` | GPG key IDs — encrypt to all, any can decrypt | Yes |
 | `repo_dir` | Local path for the repo clone | No (default: `~/.config/cb/repo`) |
 
 ## Auto-Cleanup with CI
