@@ -1,36 +1,39 @@
-"""GPG encrypt/decrypt using python-gnupg."""
+"""GPG encrypt/decrypt using system gpg + gpg-agent."""
 
 from __future__ import annotations
 
-import getpass
+import os
+import subprocess
 import sys
-
-import gnupg
-
-
-def get_gpg() -> gnupg.GPG:
-    return gnupg.GPG()
 
 
 def encrypt(data: str, recipients: str | list[str]) -> str:
     """Encrypt text with GPG for one or more recipients. Returns ASCII-armored ciphertext."""
-    gpg = get_gpg()
-    result = gpg.encrypt(data, recipients, armor=True, always_trust=True)
-    if not result.ok:
-        print(f"GPG encryption failed: {result.status}", file=sys.stderr)
+    if isinstance(recipients, str):
+        recipients = [recipients]
+    cmd = ["gpg", "--armor", "--trust-model", "always", "--encrypt"]
+    for r in recipients:
+        cmd += ["-r", r]
+    result = subprocess.run(cmd, input=data, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"GPG encryption failed: {result.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
-    return str(result)
+    return result.stdout
 
 
-def decrypt(armored_data: str, passphrase: str | None = None) -> str:
-    """Decrypt ASCII-armored GPG ciphertext."""
-    gpg = get_gpg()
-    result = gpg.decrypt(armored_data, passphrase=passphrase)
-    if not result.ok and passphrase is None:
-        # First attempt failed — prompt for passphrase and retry
-        passphrase = getpass.getpass("GPG passphrase: ")
-        result = gpg.decrypt(armored_data, passphrase=passphrase)
-    if not result.ok:
-        print(f"GPG decryption failed: {result.status}", file=sys.stderr)
+def decrypt(armored_data: str) -> str:
+    """Decrypt ASCII-armored GPG ciphertext. Uses system gpg-agent for passphrase."""
+    env = dict(os.environ)
+    if "GPG_TTY" not in env:
+        try:
+            env["GPG_TTY"] = os.ttyname(sys.stdin.fileno())
+        except (OSError, AttributeError):
+            pass
+    result = subprocess.run(
+        ["gpg", "--decrypt"],
+        input=armored_data, capture_output=True, text=True, env=env,
+    )
+    if result.returncode != 0:
+        print(f"GPG decryption failed: {result.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
-    return str(result)
+    return result.stdout

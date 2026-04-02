@@ -65,6 +65,10 @@ class GitClient:
         else:
             self.repo_dir.mkdir(parents=True, exist_ok=True)
             _run(["git", "clone", self.config.repo_url, str(self.repo_dir)], interactive=True)
+            # For HTTPS URLs, enable credential caching so future non-interactive
+            # operations (copy/paste) don't need terminal prompts
+            if self.config.repo_url.startswith("https://"):
+                _run(["git", "config", "credential.helper", "store"], cwd=self.repo_dir)
         self.clips_path.mkdir(exist_ok=True)
 
     def _sync(self) -> None:

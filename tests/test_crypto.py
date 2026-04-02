@@ -1,75 +1,56 @@
-"""Tests for GPG encrypt/decrypt."""
+"""Tests for GPG encrypt/decrypt (subprocess-based)."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, MagicMock
+import subprocess
+
+import pytest
 
 from cb.crypto import decrypt, encrypt
 
 
-class FakeGPGResult:
-    def __init__(self, ok: bool, data: str = "", status: str = ""):
-        self.ok = ok
-        self.status = status
-        self._data = data
-
-    def __str__(self):
-        return self._data
-
-
-@patch("cb.crypto.get_gpg")
-def test_encrypt_success(mock_get_gpg):
-    gpg = MagicMock()
-    gpg.encrypt.return_value = FakeGPGResult(ok=True, data="-----BEGIN PGP MESSAGE-----\nfoo\n-----END PGP MESSAGE-----")
-    mock_get_gpg.return_value = gpg
+@patch("cb.crypto.subprocess.run")
+def test_encrypt_success(mock_run):
+    mock_run.return_value = MagicMock(
+        returncode=0,
+        stdout="-----BEGIN PGP MESSAGE-----\nfoo\n-----END PGP MESSAGE-----",
+    )
 
     result = encrypt("hello", ["ABCD1234", "EFGH5678"])
     assert "PGP MESSAGE" in result
-    gpg.encrypt.assert_called_once_with("hello", ["ABCD1234", "EFGH5678"], armor=True, always_trust=True)
+    cmd = mock_run.call_args[0][0]
+    assert "-r" in cmd
+    assert "ABCD1234" in cmd
+    assert "EFGH5678" in cmd
 
 
-@patch("cb.crypto.get_gpg")
-def test_encrypt_failure(mock_get_gpg):
-    gpg = MagicMock()
-    gpg.encrypt.return_value = FakeGPGResult(ok=False, status="no public key")
-    mock_get_gpg.return_value = gpg
+@patch("cb.crypto.subprocess.run")
+def test_encrypt_single_recipient(mock_run):
+    mock_run.return_value = MagicMock(returncode=0, stdout="encrypted")
 
-    import pytest
+    encrypt("hello", "ABCD1234")
+    cmd = mock_run.call_args[0][0]
+    assert "ABCD1234" in cmd
+
+
+@patch("cb.crypto.subprocess.run")
+def test_encrypt_failure(mock_run):
+    mock_run.return_value = MagicMock(returncode=2, stderr="no public key")
+
     with pytest.raises(SystemExit):
         encrypt("hello", "BADKEY")
 
 
-@patch("cb.crypto.get_gpg")
-def test_decrypt_success(mock_get_gpg):
-    gpg = MagicMock()
-    gpg.decrypt.return_value = FakeGPGResult(ok=True, data="decrypted text")
-    mock_get_gpg.return_value = gpg
+@patch("cb.crypto.subprocess.run")
+def test_decrypt_success(mock_run):
+    mock_run.return_value = MagicMock(returncode=0, stdout="decrypted text")
 
     result = decrypt("-----BEGIN PGP MESSAGE-----\nfoo\n-----END PGP MESSAGE-----")
     assert result == "decrypted text"
 
 
-@patch("cb.crypto.getpass.getpass", return_value="wrongpass")
-@patch("cb.crypto.get_gpg")
-def test_decrypt_failure_after_passphrase(mock_get_gpg, mock_getpass):
-    gpg = MagicMock()
-    gpg.decrypt.return_value = FakeGPGResult(ok=False, status="no secret key")
-    mock_get_gpg.return_value = gpg
+@patch("cb.crypto.subprocess.run")
+def test_decrypt_failure(mock_run):
+    mock_run.return_value = MagicMock(returncode=2, stderr="decryption failed")
 
-    import pytest
     with pytest.raises(SystemExit):
         decrypt("bad data")
-
-
-@patch("cb.crypto.getpass.getpass", return_value="mypass")
-@patch("cb.crypto.get_gpg")
-def test_decrypt_prompts_passphrase(mock_get_gpg, mock_getpass):
-    gpg = MagicMock()
-    # First attempt fails, second with passphrase succeeds
-    gpg.decrypt.side_effect = [
-        FakeGPGResult(ok=False, status="decryption failed"),
-        FakeGPGResult(ok=True, data="decrypted text"),
-    ]
-    mock_get_gpg.return_value = gpg
-
-    result = decrypt("bad data")
-    assert result == "decrypted text"
-    gpg.decrypt.assert_called_with("bad data", passphrase="mypass")
