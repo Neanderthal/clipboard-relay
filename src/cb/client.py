@@ -21,20 +21,25 @@ class Clip:
 GIT_TIMEOUT = 30
 
 
-def _run(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
-    env = dict(__import__("os").environ, GIT_TERMINAL_PROMPT="0")
+def _run(cmd: list[str], cwd: Path | None = None, interactive: bool = False) -> subprocess.CompletedProcess:
+    import os
     try:
-        result = subprocess.run(
-            cmd, cwd=cwd, capture_output=True, text=True,
-            timeout=GIT_TIMEOUT, env=env,
-        )
+        if interactive:
+            result = subprocess.run(cmd, cwd=cwd, text=True, timeout=GIT_TIMEOUT)
+        else:
+            env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
+            result = subprocess.run(
+                cmd, cwd=cwd, capture_output=True, text=True,
+                timeout=GIT_TIMEOUT, env=env,
+            )
     except subprocess.TimeoutExpired:
         print(f"Command timed out after {GIT_TIMEOUT}s: {' '.join(cmd)}", file=sys.stderr)
         print("Check your git remote URL and network connection.", file=sys.stderr)
         sys.exit(1)
     if result.returncode != 0:
-        print(f"Command failed: {' '.join(cmd)}", file=sys.stderr)
-        print(result.stderr.strip(), file=sys.stderr)
+        if not interactive:
+            print(f"Command failed: {' '.join(cmd)}", file=sys.stderr)
+            print(result.stderr.strip(), file=sys.stderr)
         sys.exit(1)
     return result
 
@@ -46,12 +51,12 @@ class GitClient:
         self.clips_path = self.repo_dir / config.clips_dir
 
     def ensure_repo(self) -> None:
-        """Clone the repo if it doesn't exist, otherwise pull latest."""
+        """Clone the repo if it doesn't exist, otherwise pull latest. Allows interactive prompts."""
         if (self.repo_dir / ".git").exists():
-            _run(["git", "pull", "--rebase", "--quiet"], cwd=self.repo_dir)
+            _run(["git", "pull", "--rebase", "--quiet"], cwd=self.repo_dir, interactive=True)
         else:
             self.repo_dir.mkdir(parents=True, exist_ok=True)
-            _run(["git", "clone", self.config.repo_url, str(self.repo_dir)])
+            _run(["git", "clone", self.config.repo_url, str(self.repo_dir)], interactive=True)
         self.clips_path.mkdir(exist_ok=True)
 
     def _sync(self) -> None:
