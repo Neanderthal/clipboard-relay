@@ -18,7 +18,7 @@ def test_copy_with_arg(runner):
          patch("cb.cli.encrypt", return_value="encrypted") as mock_encrypt, \
          patch("cb.cli.GitClient") as MockClient:
         mock_cfg = MagicMock()
-        mock_cfg.gpg_key_id = "KEY123"
+        mock_cfg.gpg_keys = ["KEY_A", "KEY_B"]
         MockConfig.load.return_value = mock_cfg
         MockClient.return_value.push_clip.return_value = "20260401_120000.gpg"
 
@@ -26,7 +26,7 @@ def test_copy_with_arg(runner):
 
     assert result.exit_code == 0
     assert "20260401_120000.gpg" in result.output
-    mock_encrypt.assert_called_once_with("hello world", "KEY123")
+    mock_encrypt.assert_called_once_with("hello world", ["KEY_A", "KEY_B"])
 
 
 def test_paste_no_args(runner):
@@ -70,7 +70,7 @@ def test_paste_no_clips(runner):
 def test_config_no_args_shows_current(runner):
     mock_cfg = MagicMock()
     mock_cfg.repo_url = "git@gitflic.ru:user/clip.git"
-    mock_cfg.gpg_key_id = "ABCD1234"
+    mock_cfg.gpg_keys = ["ABCD1234", "EFGH5678"]
     mock_cfg.repo_dir = "/home/user/.config/cb/repo"
 
     with patch("cb.cli.Config") as MockConfig:
@@ -79,6 +79,7 @@ def test_config_no_args_shows_current(runner):
 
     assert "gitflic.ru" in result.output
     assert "ABCD1234" in result.output
+    assert "EFGH5678" in result.output
 
 
 def test_config_set_repo(runner):
@@ -86,7 +87,7 @@ def test_config_set_repo(runner):
         runner.invoke(main, ["config", "--repo", "git@gitflic.ru:user/clip.git"])
 
     MockConfig.save.assert_called_once_with(
-        repo_url="git@gitflic.ru:user/clip.git", gpg_key=None, repo_dir=None
+        repo_url="git@gitflic.ru:user/clip.git", gpg_keys=None, repo_dir=None
     )
 
 

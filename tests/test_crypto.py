@@ -21,9 +21,9 @@ def test_encrypt_success(mock_get_gpg):
     gpg.encrypt.return_value = FakeGPGResult(ok=True, data="-----BEGIN PGP MESSAGE-----\nfoo\n-----END PGP MESSAGE-----")
     mock_get_gpg.return_value = gpg
 
-    result = encrypt("hello", "ABCD1234")
+    result = encrypt("hello", ["ABCD1234", "EFGH5678"])
     assert "PGP MESSAGE" in result
-    gpg.encrypt.assert_called_once_with("hello", "ABCD1234", armor=True)
+    gpg.encrypt.assert_called_once_with("hello", ["ABCD1234", "EFGH5678"], armor=True)
 
 
 @patch("cb.crypto.get_gpg")

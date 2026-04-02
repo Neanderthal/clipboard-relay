@@ -53,7 +53,7 @@ def _do_copy(text: str) -> None:
         sys.exit(1)
 
     cfg = Config.load()
-    encrypted = encrypt(text, cfg.gpg_key_id)
+    encrypted = encrypt(text, cfg.gpg_keys)
     client = GitClient(cfg)
     filename = client.push_clip(encrypted)
     click.echo(f"Copied → {filename}")
@@ -107,21 +107,25 @@ def cleanup() -> None:
 
 @main.command()
 @click.option("--repo", help="Git remote URL (e.g. git@gitflic.ru:user/clipboard.git).")
-@click.option("--gpg-key", help="GPG key ID for encryption.")
+@click.option("--gpg-key", multiple=True, help="GPG key ID (repeatable for multiple recipients).")
 @click.option("--repo-dir", help="Local path for the repo clone.")
-def config(repo: str | None, gpg_key: str | None, repo_dir: str | None) -> None:
+def config(repo: str | None, gpg_key: tuple[str, ...], repo_dir: str | None) -> None:
     """Show or set configuration."""
     if not any([repo, gpg_key, repo_dir]):
         try:
             cfg = Config.load()
-            click.echo(f"  repo_url:   {cfg.repo_url}")
-            click.echo(f"  gpg_key_id: {cfg.gpg_key_id}")
-            click.echo(f"  repo_dir:   {cfg.repo_dir}")
+            click.echo(f"  repo_url:  {cfg.repo_url}")
+            click.echo(f"  gpg_keys:  {', '.join(cfg.gpg_keys)}")
+            click.echo(f"  repo_dir:  {cfg.repo_dir}")
         except SystemExit:
             pass
         return
 
-    Config.save(repo_url=repo, gpg_key=gpg_key, repo_dir=repo_dir)
+    Config.save(
+        repo_url=repo,
+        gpg_keys=list(gpg_key) if gpg_key else None,
+        repo_dir=repo_dir,
+    )
 
 
 def _format_age(ts) -> str:

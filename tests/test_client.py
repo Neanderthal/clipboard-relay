@@ -15,7 +15,7 @@ def config(tmp_path):
     repo_dir.mkdir()
     return Config(
         repo_url="git@example.com:user/clipboard.git",
-        gpg_key_id="ABCD1234",
+        gpg_keys=["ABCD1234"],
         repo_dir=repo_dir,
     )
 

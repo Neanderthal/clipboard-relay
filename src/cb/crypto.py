@@ -11,10 +11,10 @@ def get_gpg() -> gnupg.GPG:
     return gnupg.GPG()
 
 
-def encrypt(data: str, recipient_key_id: str) -> str:
-    """Encrypt text with GPG. Returns ASCII-armored ciphertext."""
+def encrypt(data: str, recipients: str | list[str]) -> str:
+    """Encrypt text with GPG for one or more recipients. Returns ASCII-armored ciphertext."""
     gpg = get_gpg()
-    result = gpg.encrypt(data, recipient_key_id, armor=True)
+    result = gpg.encrypt(data, recipients, armor=True)
     if not result.ok:
         print(f"GPG encryption failed: {result.status}", file=sys.stderr)
         sys.exit(1)
